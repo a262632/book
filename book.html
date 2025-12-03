@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>東京富士山8日深度旅行手冊</title>
+    
+    <!-- 引入 Google Fonts: Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* 全局字體設定 */
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f0f4f8; /* 淺藍灰背景 */
+            font-size: 16px;
+            line-height: 1.6;
+            color: #374151; /* Gray 700 */
+        }
+
+        /* POI (景點) 按鈕基礎樣式 */
+        .poi-button {
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 0.25rem 0.75rem; 
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+        .poi-button:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* 每日行程標頭的漸變背景 */
+        .day-header {
+            background-color: #1E40AF; /* Blue 800 fallback */
+            background-image: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); 
+        }
+
+        /* 卡片陰影與邊框 */
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #E5E7EB;
+        }
+
+        /* 區塊標題底線 */
+        .section-title {
+            border-bottom: 3px solid #60A5FA; /* Blue 400 */
+        }
+
+        /* 時刻表樣式 */
+        .timetable-table {
+            border-collapse: collapse;
+            width: 100%;
+            background-color: #fff;
+        }
+        .timetable-table th, .timetable-table td {
+            padding: 10px;
+            text-align: left;
+            font-size: 0.85rem;
+            border: 1px solid #D1D5DB;
+        }
+        .timetable-table th {
+            background-color: #DBEAFE; /* Blue 100 */
+            color: #1E40AF; /* Blue 800 */
+            font-weight: 700;
+        }
+        .timetable-table tr:nth-child(even) {
+            background-color: #F9FAFB;
+        }
+
+        /* 景點名稱高亮樣式 (供 JS 使用) */
+        .poi-highlight {
+            font-weight: 700;
+            color: #4338ca; /* indigo-700 */
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* 響應式佈局微調 */
+        @media (max-width: 768px) {
+            .p-4 { padding: 1rem; }
+            .timetable-table th, .timetable-table td {
+                padding: 6px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-5xl mx-auto">
+
+    <!-- POI 資料庫與互動腳本 -->
+    <script>
+        // 景點資料庫，用於精確生成 Google 地圖連結
+        const pointsOfInterest = [
+            // Day 1
+            { name: "VIA INN SHINJUKU", query: "VIA INN SHINJUKU - JR WEST GROUP" },
+            { name: "東橫INN", query: "東横INN" },
+            { name: "Afuri 拉麵", query: "Afuri Ramen Shinjuku" },
+            { name: "一蘭 新宿中央東口店", query: "Ichiran Ramen Shinjuku Central East Exit" },
+            { name: "磯丸水產 新宿三丁目店", query: "Isomaru Suisan Shinjuku 3-chome" },
+            // 新增的深夜選項
+            { name: "五ノ神製作所", query: "Tsukemen Gonokami Seisakusho Shinjuku" },
+            { name: "餃子の福包 新宿店", query: "Gyoza no Fukuho Shinjuku" },
+            
+            // Day 2 (新增午餐推薦)
+            { name: "不動 河口湖駅前店", query: "味処 ほうとう不動 河口湖駅前店" },
+            { name: "富士山食堂", query: "Fujisan Shokudo Kawaguchiko" },
+            { name: "The Noborisaka village", query: "The Noborisaka village 富士山" },
+            { name: "新倉富士淺間神社", query: "新倉富士浅間神社" },
+            { name: "不動餺飥麵", query: "ほうとう不動 東恋路店" },
+            { name: "吉田のうどん", query: "吉田のうどん 富士吉田" },
+            { name: "魚民 富士山駅前店", query: "魚民 富士山駅前店" },
+            { name: "居酒屋 學牛", query: "焼肉 牛學 (Gakugyu) 富士吉田" },
+
+            // Day 3 新增午餐推薦 (西湖根場)
+            { name: "里根場 食事處", query: "西湖いやしの里根場 食事処" },
+            { name: "根場 蕎麥麵", query: "里根場のそば" },
+            
+            // Day 3
+            { name: "西湖療癒之里根場", query: "西湖いやしの里根場" },
+            { name: "大石公園", query: "大石公園" },
+            { name: "音樂盒之森美術館", query: "河口湖音樂盒之森美術館" },
+            { name: "河口湖香草館", query: "河口湖香草館" },
+            { name: "WAKANA", query: "鮨 WAKANA 河口湖" },
+            { name: "ほうとう蔵歩成", query: "ほうとう蔵歩成 富士河口湖" },
+            // Day 4
+            { name: "山中湖", query: "山中湖" },
+            { name: "忍野八海", query: "忍野八海" },
+            { name: "THE PARK 湖畔景觀咖啡廳", query: "THE PARK 湖畔景觀咖啡廳" },
+            { name: "池の家", query: "池の家 忍野八海" },
+            { name: "食彩味覚 味くら", query: "食彩味覚 味くら 富士山" },
+            // Day 5
+            { name: "六本木", query: "六本木" },
+            { name: "TsuruTonTan 烏龍麵", query: "TsuruTonTan 烏龍麵 六本木店" },
+            { name: "Busta 新宿 駅弁", query: "Busta 新宿 弁当" },
+            { name: "Soba Stand", query: "新宿駅 蕎麦 スタンド" },
+            { name: "權八 西麻布", query: "權八 西麻布" },
+            // Day 6
+            { name: "明治神宮", query: "明治神宮" },
+            { name: "橫濱中華街", query: "橫濱中華街" },
+            { name: "Chano-ma Yokohama", query: "Chano-ma Yokohama Queens Square" }, 
+            { name: "橫濱紅磚倉庫", query: "橫濱紅磚倉庫" },
+            { name: "橫濱拉麵博物館", query: "新橫濱拉麵博物館" },
+            { name: "赤レンガ倉庫 Beer Next", query: "赤レンガ倉庫 Beer Next" },
+            // Day 7
+            { name: "澀谷", query: "澀谷十字路口" },
+            { name: "原宿竹下通/表參道", query: "原宿 竹下通" },
+            { name: "Shibuya Loft", query: "Shibuya Loft" },
+            { name: "Number Sugar", query: "Number Sugar 表參道本店" },
+            { name: "Luke's Lobster", query: "Luke's Lobster 表参道" },
+            { name: "迴轉壽司 活 美登利", query: "回転寿司 活 美登利 渋谷" },
+            { name: "新宿割烹 中嶋", query: "新宿割烹 中嶋" },
+            { name: "ザウオ", query: "ザウオ 新宿店" }
+        ];
+
+        // 創建地圖導航按鈕的函數
+        function createMapButton(poiName) {
+            const poi = pointsOfInterest.find(p => p.name === poiName);
+            if (!poi) return '';
+            const query = encodeURIComponent(poi.query || poiName);
+            const mapUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+            return `
+                <a href="${mapUrl}" target="_blank" class="poi-button text-xs font-semibold rounded-full bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 whitespace-nowrap no-underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 2a6 6 0 00-6 6c0 4.18 3.5 8.132 6 10.332 2.5-2.2 6-6.152 6-10.332a6 6 0 00-6-6zm0 8a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                    </svg>
+                    地圖
+                </a>
+            `;
+        }
+
+        // 嵌入地圖按鈕到文字內容中的函數
+        function embedMapButtons(text) {
+            let result = text;
+            // 確保從最長的景點名稱開始替換，避免部分名稱被錯誤替換
+            const sortedPois = [...pointsOfInterest].sort((a, b) => b.name.length - a.name.length);
+            
+            sortedPois.forEach(poi => {
+                if (result.includes(poi.name)) {
+                    // 這裡使用簡單的替換邏輯，將純文本替換為 HTML
+                    const safeName = poi.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    
+                    // 正則解釋：
+                    // (?<!>) 確保前面不是 '>' (避免在標籤內替換)
+                    // (?![^<]*>) 確保後面不是閉合標籤的一部分 (避免破壞 HTML 屬性)
+                    const regex = new RegExp(`(?<!>)${safeName}(?![^<]*>)`, 'g');
+                    
+                    const replacement = `<span class="poi-highlight">${poi.name}</span>${createMapButton(poi.name)}`;
+                    result = result.replace(regex, replacement);
+                }
+            });
+            return result;
+        }
+
+        // 頁面加載完成後，執行嵌入地圖按鈕的操作
+        window.onload = function () {
+            const overviewElements = document.querySelectorAll('.itinerary-poi-list');
+            overviewElements.forEach(el => {
+                el.innerHTML = embedMapButtons(el.innerHTML);
+            });
+        };
+    </script>
+    
+    <!-- 頁面標題 -->
+    <header class="text-center mb-8 bg-white p-6 rounded-xl shadow-lg border-t-4 border-indigo-500">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 pb-2">🗻 東京富士山8日深度旅行手冊 🗼</h1>
+        <p class="text-lg md:text-xl text-indigo-600 mt-2 font-medium">旅遊日期: 12/13 (六) - 12/20 (六) | 兩張 1 Day Pass 附官方連結</p>
+    </header>
+
+    <!-- 購票與交通指南區塊 -->
+    <section class="mb-10 p-6 bg-white rounded-xl card">
+        <h2 class="text-2xl font-bold text-gray-800 section-title pb-3 mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v4m-9 0h9m3 0h9M3 10h18" />
+            </svg>
+            ■ 購票與交通關鍵指南
+        </h2>
+        
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 mt-6 pl-2 border-l-4 border-indigo-300">1. 票券購買清單與預約</h3>
+        <div class="overflow-x-auto mb-6">
+            <table class="timetable-table min-w-full rounded-lg overflow-hidden shadow-sm">
+                <thead>
+                    <tr>
+                        <th>票券名稱</th>
+                        <th>購買/預約地點</th>
+                        <th>核心備註</th>
+                        <th>票價 (約)</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <tr><td>N'EX 東京去回車票</td><td>成田機場 JR 售票處(B1)</td><td>外國人限定優惠。<strong>務必劃位</strong>，確保有座位。</td><td><strong>4,070 JPY</strong> (來回)</td></tr>
+                    <tr><td>富士急行高速巴士</td><td><a href="https://highwaybus.com" target="_blank" class="text-blue-600 hover:text-blue-800 underline font-medium">Highwaybus.com (中文)</a></td><td><strong>需事先網路預約付款</strong>，出示 QR Code 乘車。</td><td><strong>2,200 JPY</strong> (單程)</td></tr>
+                    <tr class="bg-green-50 font-medium">
+                        <td class="text-green-800">1DayPass 河口湖·西湖·本棲湖 (Day 3 使用)</td>
+                        <td>河口湖/富士山站巴士窗口 / <a href="https://bus.fujikyu.co.jp/rosen/shuyuomuni" target="_blank" class="text-blue-600 hover:text-blue-800 underline">官方網站</a></td>
+                        <td><strong>1日券</strong>。主要用於 <strong>Day 3</strong> (紅線/綠線)。涵蓋河口湖與西湖周遊。</td>
+                        <td class="text-green-800"><strong>1,500 JPY</strong></td>
+                    </tr>
+                    <tr class="bg-yellow-50 font-medium">
+                        <td class="text-red-800">1DayPass 富士吉田·忍野·山中湖 (Day 4 使用)</td>
+                        <td>河口湖/富士山站巴士窗口 / <a href="https://bus-fujikyu-co-jp.translate.goog/rosen/shuyufujikkogo?_x_tr_sl=ja&_x_tr_tl=zh-TW&_x_tr_hl=ja&_x_tr_pto=wapp" target="_blank" class="text-blue-600 hover:text-blue-800 underline">官方網站</a></td>
+                        <td><strong>1日券</strong>。主要用於 <strong>Day 4</strong> (A-Line 巴士)。涵蓋富士吉田、忍野八海、山中湖。</td>
+                        <td class="text-red-800"><strong>1,500 JPY</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 pl-2 border-l-4 border-indigo-300">2. 重要交通樞紐站點</h3>
+        <ul class="list-disc list-inside space-y-1 ml-4 text-gray-600 mb-6 bg-gray-50 p-4 rounded-lg">
+            <li><strong>高速巴士上車地:</strong> Busta 新宿 (4樓) (新宿車站南口正上方)</li>
+            <li><strong>橫濱交通樞紐:</strong> 櫻木町站 (Minatomirai 區域核心)</li>
+            <li><strong>N'EX 乘車處:</strong> JR 新宿站 (第5、6番線，請依月台指示)</li>
+            <li><strong>Skyliner 乘車處:</strong> 京成上野站 / 日暮里站 (需從日暮里轉乘 JR 山手線或京濱東北線至新宿)</li>
+        </ul>
+
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 pl-2 border-l-4 border-indigo-300">3. 河口湖周遊巴士時刻表 (紅線參考)</h3>
+        <div class="overflow-x-auto mb-6">
+            <table class="timetable-table min-w-full rounded-lg overflow-hidden shadow-sm">
+                <thead>
+                    <tr>
+                        <th>路線</th>
+                        <th>主要覆蓋區域</th>
+                        <th>發車頻率 (約)</th>
+                        <th>首班車 (約)</th>
+                        <th>末班車 (約)</th>
+                        <th>乘車時間 (河口湖站-大石公園)</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <tr>
+                        <td>紅線 (河口湖周遊)</td>
+                        <td>河口湖東岸、北岸 (主要景點)</td>
+                        <td>15-20分鐘/班</td>
+                        <td>09:00 AM</td>
+                        <td>17:30 PM</td>
+                        <td>約 25 分鐘</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 mt-6 pl-2 border-l-4 border-indigo-300">4. 每日行程總表摘要</h3>
+        <div class="overflow-x-auto mb-6">
+            <table class="timetable-table min-w-full rounded-lg overflow-hidden shadow-sm">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>主活動區域</th>
+                        <th>核心景點/體驗</th>
+                        <th>住宿地點</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <tr><td>12/13 (六)</td><td>東京 新宿</td><td>成田機場抵達 → N'EX → 新宿 Check-in</td><td class="itinerary-poi-list">VIA INN SHINJUKU</td></tr>
+                    <tr class="bg-blue-50"><td>12/14 (日)</td><td>富士山 河口湖</td><td>新宿 → 河口湖 (高速巴士), 車站寄放行李後前往忠靈塔</td><td class="itinerary-poi-list font-bold text-blue-800">The Noborisaka village</td></tr>
+                    <tr class="bg-green-50"><td>12/15 (一)</td><td>富士五湖</td><td><strong>西湖根場</strong> (午餐) $\rightarrow$ <strong>大石公園</strong> (逆富士) $\rightarrow$ <strong>河口湖香草館</strong> <strong>[使用 河口湖·西湖 1DayPass]</strong></td><td class="itinerary-poi-list font-bold text-blue-800">The Noborisaka village</td></tr>
+                    <tr class="bg-yellow-50"><td>12/16 (二)</td><td>富士五湖</td><td>山中湖與忍野八海觀光 <strong>[使用 富士吉田·山中湖 1DayPass]</strong></td><td class="itinerary-poi-list font-bold text-blue-800">The Noborisaka village</td></tr>
+                    <tr><td>12/17 (三)</td><td>東京 新宿/六本木</td><td>河口湖 → 新宿 (高速巴士), 六本木夜景</td><td class="itinerary-poi-list">東橫INN</td></tr>
+                    <tr><td>12/18 (四)</td><td>東京 橫濱</td><td>明治神宮 → 橫濱一日遊 (紅磚倉庫, 中華街)</td><td class="itinerary-poi-list">東橫INN</td></tr>
+                    <tr><td>12/19 (五)</td><td>東京 澀谷/原宿</td><td>澀谷/原宿 潮流採買與告別晚餐</td><td class="itinerary-poi-list">東橫INN</td></tr>
+                    <tr><td>12/20 (六)</td><td>歸途</td><td>新宿飯店退房 → N'EX → 成田機場 (14:00 班機)</td><td class="itinerary-poi-list">東橫INN</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 每日行程區塊 -->
+    <section>
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-6 border-b-4 border-red-500 pb-2">📝 每日行程細節與交通時刻表</h2>
+
+        <!-- DAY 1: 12/13 (六) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4 rounded-t-xl">
+                <h3 class="text-xl font-bold">DAY 1: 12/13 (六) ✈️ 晚間抵達與深夜晚餐 (19:20 入境)</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ <strong>行程概要 (晚間) - 時間軸:</strong></p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-700 space-y-1">
+                        <li>19:20 抵達 NRT，辦理入境 (預抓 1 小時)。</li>
+                        <li>20:20 領取行李、購買車票（目標搭乘 20:30 - 21:00 班次）。</li>
+                        <li>22:30 抵達新宿，入住 <span class="itinerary-poi-list">VIA INN SHINJUKU</span>。</li>
+                    </ul>
+                </div>
+
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🚝 交通規劃：成田機場 (NRT) → 新宿 (Shinjuku) 多方案比較</h4>
+                
+                <!-- 新增 N'EX 官方指南連結 -->
+                <p class="text-sm text-blue-700 font-medium mb-4 pl-4 border-l-4 border-blue-300">
+                    💡 <strong>N'EX 購票與動線指南:</strong> 請參考 <a href="https://www.jreast.co.jp/multi/zh-cht/pass/narita_express.html" target="_blank" class="text-red-600 hover:text-red-800 underline font-bold">JR東日本官方網站</a>，內有詳細的購票地點、劃位流程與月台動線圖。
+                </p>
+
+                <!-- 新增 Skyliner 官方指南連結 -->
+                <p class="text-sm text-purple-700 font-medium mb-4 pl-4 border-l-4 border-purple-300">
+                    💡 <strong>Skyliner 購票與搭乘動線:</strong> 可在機場 B1 京成電鐵櫃台或售票機購買。乘車口在機場 B1 F。詳情請參考 <a href="https://www.keisei.co.jp/keisei/tetudou/skyliner/tc/" target="_blank" class="text-red-600 hover:text-red-800 underline font-bold">京成電鐵 Skyliner 官方網站</a>。
+                </p>
+                
+                <!-- 新增 利木津巴士 官方指南連結 -->
+                <p class="text-sm text-green-700 font-medium mb-4 pl-4 border-l-4 border-green-300">
+                    💡 <strong>利木津巴士購票與搭乘動線:</strong> 巴士乘車券在入境大廳一樓 (1F) 櫃台購買。乘車處在 1F 戶外巴士站牌。詳情請參考 <a href="https://www.limousinebus.co.jp/ch2/" target="_blank" class="text-red-600 hover:text-red-800 underline font-bold">利木津巴士官方網站</a>。
+                </p>
+
+                
+                <!-- *** 更新後的晚間時段參考時刻表和交通規劃 *** -->
+                <h5 class="text-lg font-bold text-gray-800 mt-4 mb-3 p-2 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+                    🕒 晚間時段參考時刻表 (適用 19:20 抵達班機)
+                </h5>
+                <div class="overflow-x-auto mb-4">
+                     <table class="timetable-table min-w-full text-xs text-center">
+                         <thead>
+                            <tr>
+                                <th class="w-1/6">交通方式</th>
+                                <th>班次</th>
+                                <th>成田發 (T2/T1)</th>
+                                <th>中轉/直達站</th>
+                                <th>中轉站/新宿著</th>
+                                <th>轉乘路線 (約 25 分)</th>
+                                <th class="w-1/6">預計抵達新宿時間</th>
+                            </tr>
+                         </thead>
+                         <tbody>
+                            <!-- 選項 A: JR N'EX (不動) -->
+                            <tr class="bg-blue-50 font-bold">
+                                <td class="text-blue-700">選項 A: JR N'EX (推薦)</td>
+                                <td>N'EX 52號</td>
+                                <td>20:18 (需快速通關)</td>
+                                <td>新宿 (直達)</td>
+                                <td>21:32</td>
+                                <td>N/A (直達)</td>
+                                <td class="text-blue-700">21:32 (新宿站)</td>
+                            </tr>
+                            <tr class="bg-blue-50">
+                                <td class="text-blue-700">選項 A: JR N'EX (穩妥)</td>
+                                <td>N'EX 54號</td>
+                                <td>20:52</td>
+                                <td>新宿 (直達)</td>
+                                <td>22:11</td>
+                                <td>N/A (直達)</td>
+                                <td>22:11 (新宿站)</td>
+                            </tr>
+                            
+                            <!-- 選項 B: 利木津巴士 (新增) -->
+                            <tr class="bg-green-100 font-bold">
+                                <td class="text-green-700">選項 B: 利木津巴士 (舒適)</td>
+                                <td>21:05 班次</td>
+                                <td>21:05</td>
+                                <td>新宿 Busta (4F)</td>
+                                <td>22:45 (約)</td>
+                                <td>步行至 VIA INN (約 9 分鐘)</td>
+                                <td class="text-green-700">22:55 (約)</td>
+                            </tr>
+                            <tr class="bg-green-100">
+                                <td class="text-green-700">選項 B: 利木津巴士 (穩妥)</td>
+                                <td>21:40 班次</td>
+                                <td>21:40</td>
+                                <td>新宿 Busta (4F)</td>
+                                <td>23:20 (約)</td>
+                                <td>步行至 VIA INN (約 9 分鐘)</td>
+                                <td>23:30 (約)</td>
+                            </tr>
+                            
+                            <!-- 選項 C: Skyliner (不動) -->
+                            <tr class="bg-purple-50 font-bold">
+                                <td class="text-purple-700">選項 C: Skyliner (最快)</td>
+                                <td>Skyliner 51號</td>
+                                <td>20:30 (需快速通關)</td>
+                                <td>日暮里 (Nippori)</td>
+                                <td>21:11</td>
+                                <td>JR 山手線或京濱東北線</td>
+                                <td class="text-purple-700">21:45 (約)</td>
+                            </tr>
+                            <tr class="bg-purple-50">
+                                <td class="text-purple-700">選項 C: Skyliner (穩妥)</td>
+                                <td>Skyliner 53號</td>
+                                <td>21:05</td>
+                                <td>日暮里 (Nippori)</td>
+                                <td>21:46</td>
+                                <td>JR 山手線或京濱東北線</td>
+                                <td>22:20 (約)</td>
+                            </tr>
+                         </tbody>
+                     </table>
+                    <p class="text-xs text-gray-500 mt-1">* 時刻僅供參考，實際運行狀況請依當日現場或 Google Maps 為準。預留入境手續 60-90 分鐘。利木津巴士車程會受路面交通狀況影響。</p>
+                </div>
+                <!-- *** 新增利木津巴士轉乘指引 *** -->
+                <h5 class="text-base font-bold text-green-700 mt-4 mb-2 p-2 bg-green-50 rounded-lg border-l-4 border-green-400">
+                    ✅ 利木津巴士 (Busta 新宿) 轉乘至 VIA INN SHINJUKU 詳細步驟
+                </h5>
+                <ol class="list-decimal list-inside ml-4 text-sm text-gray-700 space-y-2">
+                    <li class="font-medium">
+                        <strong>第一程：利木津巴士 (Limousine Bus)</strong>
+                        <ul>
+                            <li class="ml-4"><strong>購票：</strong> 在機場入境大廳 (1F) 的櫃台購買，無須事先預約 (但為保險起見仍可上網查詢)。</li>
+                            <li class="ml-4"><strong>乘車：：</strong> 成田機場 (NRT) 1F 戶外巴士站牌。</li>
+                            <li class="ml-4"><strong>終點選擇：：</strong> 搭乘前往 **新宿地區** 的班次，通常會停靠 **新宿高速巴士總站 (Busta 新宿)**。</li>
+                            <li class="ml-4"><strong>車程：：</strong> 約 1 小時 40 分鐘至 2 小時 (視當晚交通狀況而定)。</li>
+                            <li class="ml-4 text-xs text-gray-500">* 注意：巴士路線可能會因交通狀況或停靠站點多寡而調整。</li>
+                        </ul>
+                    </li>
+                    <li class="font-medium">
+                        <strong>第二程：Busta 新宿 → <span class="itinerary-poi-list">VIA INN SHINJUKU</span> (步行)</strong>
+                        <ul>
+                            <li class="ml-4"><strong>下車站：：</strong> 新宿高速巴士總站 (Busta 新宿) 4F。</li>
+                            <li class="ml-4"><strong>步行路線：：</strong> 從 Busta 新宿下樓，穿越 JR 新宿車站 (或繞行)，找到 **中央東口 (Central East Exit)** 方向。</li>
+                            <li class="ml-4"><strong>步行時間：：</strong> 約 **9 分鐘**即可抵達 <span class="itinerary-poi-list">VIA INN SHINJUKU</span> (5-11-16 Shinjuku)。</li>
+                            <li class="ml-4 text-xs text-red-500">* 提醒：深夜抵達時，建議事先將飯店地址設為 Google Maps 目標，新宿站構造複雜，步行導航是必須的。</li>
+                        </ul>
+                    </li>
+                    <li class="font-medium">
+                        <strong>第三程：JR 新宿站 → <span class="itinerary-poi-list">VIA INN SHINJUKU</span> (步行)</strong>
+                        <ul>
+                            <li class="ml-4"><strong>出口：：</strong> 找到 **中央東口 (Central East Exit)** 出口。這是距離飯店最近、最易辨認的 JR 出口。</li>
+                            <li class="ml-4"><strong>步行時間：：</strong> 約 **9 分鐘**即可抵達 <span class="itinerary-poi-list">VIA INN SHINJUKU</span> (5-11-16 Shinjuku)。</li>
+                            <li class="ml-4 text-xs text-red-500">* 提醒：新宿站體巨大，請隨時使用 Google Maps 導航。</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍜 晚餐推薦 (新宿深夜美食 - 22:30 後適用)</h4>
+                <div class="bg-red-50 p-3 rounded-lg border-l-4 border-red-400 text-sm text-gray-700">
+                    <p class="font-medium text-red-800 mb-1">🚨 **Afuri 營業時間提醒:**</p>
+                    <p><strong><span class="itinerary-poi-list">Afuri 拉麵</span> 新宿店通常營業至深夜 (例如 01:00 AM)，<strong class="text-red-600">但建議當日再次確認分店的關門時間</strong>。若為 22:30 抵達，仍有機會前往。</strong></p>
+                </div>
+                <p class="text-sm text-gray-700 itinerary-poi-list mt-3">
+                    除了 Afuri 之外，以下是幾間深夜 22:30 之後仍營業、且深受旅客喜愛的新宿美食選擇：
+                    <ul class="list-disc list-inside ml-4 mt-2 space-y-2">
+                        <li><span class="itinerary-poi-list">一蘭 新宿中央東口店</span> (經典豚骨拉麵，通常為 24 小時營業，最為穩妥)。</li>
+                        <li><span class="itinerary-poi-list">磯丸水產 新宿三丁目店</span> (24 小時營業的海鮮居酒屋，適合想吃熱炒、海鮮的旅客)。</li>
+                        <li><span class="itinerary-poi-list">五ノ神製作所</span> (以濃郁蝦味沾麵聞名，營業時間多半至 23:00 或更晚，值得一試)。</li>
+                        <li><span class="itinerary-poi-list">餃子の福包 新宿店</span> (平價美味的餃子專賣店，適合宵夜，多數分店營業至 01:00 AM 左右)。</li>
+                    </ul>
+                </p>
+            </div>
+        </div>
+        
+        <!-- DAY 2: 12/14 (日) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+             <div class="day-header text-white p-4"><h3 class="text-xl font-bold">DAY 2: 12/14 (日) 🚌 河口湖 - 忠靈塔與富士山站周邊 (更新細節)</h3></div>
+             <div class="p-6 space-y-4">
+                 <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                     <p class="font-medium text-gray-800 mb-2">✅ <strong>行程概要 (更新):</strong></p>
+                     <ul class="list-disc list-inside ml-2 text-sm text-gray-700 itinerary-poi-list space-y-1">
+                        <li>09:35 新宿出發 (高速巴士 - <strong>Busta 4F</strong>)。</li>
+                        <li>11:20 抵達河口湖站，辦理行李寄放。</li>
+                        <li>12:00 午餐: 河口湖站周邊美食 (請參考下方推薦)。</li>
+                        <li>14:00 前往<strong>下吉田站</strong> (富士急行線, 310 JPY)，步行至 <span class="itinerary-poi-list">新倉富士淺間神社</span> (忠靈塔)。</li>
+                        <li>17:00 辦理入住 <span class="itinerary-poi-list">The Noborisaka village</span>。</li>
+                        <li>19:30 晚餐 (住宿處或富士山站周邊)。</li>
+                     </ul>
+                 </div>
+                 
+                 <!-- 新增：行李寄放資訊 -->
+                 <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🧳 河口湖站 行李寄放指南</h4>
+                 <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-gray-300 text-sm text-gray-700">
+                    <ul class="list-disc list-inside ml-4 space-y-1">
+                        <li><strong>地點:</strong> 站內外皆有<strong>投幣式置物櫃 (Coin Locker)</strong>。通常在車站入口處或巴士站牌旁。</li>
+                        <li><strong>費用參考:</strong> 小型 (約 300-500 JPY)、中型 (約 500-700 JPY)、大型 (約 700-1,000 JPY)。</li>
+                        <li><strong>手動寄放:</strong> 若置物櫃滿了，可利用站內的<strong>手荷物預かり (人工行李寄放) 服務</strong>，費用約在 500-800 JPY/件 (尺寸不拘，但數量有限)。</li>
+                        <li><strong>提醒:</strong> 旺季時置物櫃可能會滿，建議先確認大型置物櫃位置。</li>
+                    </ul>
+                 </div>
+
+                 <!-- 新增：午餐推薦 -->
+                 <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍜 午餐推薦 (河口湖站周邊 - 12:00 適用)</h4>
+                 <div class="text-sm text-gray-700 itinerary-poi-list">
+                    <p class="font-medium text-indigo-700 mb-2">以下是車站步行可達或極近的午餐選擇 (平均費用約 1,300 - 2,500 JPY/人):</p>
+                    <ul class="list-decimal list-inside ml-4 space-y-2">
+                        <li><strong>在地特色麵:</strong> <span class="itinerary-poi-list">不動 河口湖駅前店</span> (招牌餺飥麵)。距離車站步行約 3 分鐘，是最具代表性的當地美食，份量大、適合飢腸轆轆的旅客。</li>
+                        <li><strong>快速簡餐/輕食:</strong> <span class="itinerary-poi-list">富士山食堂</span> (提供定食、咖哩飯等日式簡餐，快速且平價，適合趕時間的旅客)。</li>
+                        <li><strong>便利選擇:</strong> 車站內的 Kiosk 或周邊便利店，可購買便當 (駅弁) 或飯糰，即時解決午餐。</li>
+                    </ul>
+                 </div>
+                 
+                 <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🚌 交通規劃：新宿 $\rightarrow$ 河口湖</h4>
+                 <div class="overflow-x-auto">
+                     <table class="timetable-table min-w-full text-xs"><thead><tr><th>階段</th><th>路線</th><th>乘車地點</th><th>抵達地點</th><th>乘車時間</th><th>票價</th></tr></thead><tbody><tr><td>長途</td><td>高速巴士</td><td>新宿 Busta (4F)</td><td>河口湖站</td><td>約 1小時 45分</td><td>2,200 JPY (需預約)</td></tr></tbody></table>
+                 </div>
+
+                 <!-- 新增：忠靈塔交通細節 -->
+                 <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">⛩️ 河口湖站 $\rightleftharpoons$ <span class="itinerary-poi-list">新倉富士淺間神社</span> (忠靈塔) 交通與時刻表</h4>
+                 <p class="text-sm text-gray-700 font-medium mb-2">從河口湖站前往忠靈塔需搭乘富士急行線列車至「下吉田站」再步行。</p>
+                 <div class="overflow-x-auto">
+                     <table class="timetable-table min-w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th>路線</th>
+                                <th>乘車地點</th>
+                                <th>下車站點</th>
+                                <th>搭乘時間 (參考)</th>
+                                <th>車程時間 (約)</th>
+                                <th>票價 (單程)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>富士急行線 (列車)</td>
+                                <td class="font-semibold">河口湖站</td>
+                                <td class="font-semibold">下吉田站</td>
+                                <td>13:47 $\rightarrow$ 14:02 (參考班次)</td>
+                                <td>15 分鐘</td>
+                                <td>310 JPY</td>
+                            </tr>
+                            <tr class="bg-red-50">
+                                <td>**步行** (下吉田站 $\rightarrow$ 忠靈塔)</td>
+                                <td>下吉田站</td>
+                                <td>新倉淺間神社入口</td>
+                                <td>N/A</td>
+                                <td>10 分鐘 (平路)</td>
+                                <td>N/A</td>
+                            </tr>
+                            <tr class="bg-red-50">
+                                <td>**攀登** (神社入口 $\rightarrow$ 忠靈塔)</td>
+                                <td>神社入口</td>
+                                <td>忠靈塔平台</td>
+                                <td>N/A</td>
+                                <td class="font-bold">約 20-30 分鐘 (400 階)</td>
+                                <td>N/A</td>
+                            </tr>
+                        </tbody>
+                     </table>
+                     <p class="text-xs text-red-700 mt-1">* 富士急行線班次約 20-40 分鐘一班，請在車站再次確認即時時刻表。</p>
+                 </div>
+
+                 <!-- 更新：晚餐推薦 -->
+                 <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍽️ 晚餐推薦 (住宿周邊 & 富士山站)</h4>
+                 <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-400 text-sm text-gray-700 itinerary-poi-list">
+                    <p class="font-medium text-red-800 mb-1">🏡 **The Noborisaka village 住宿晚餐提醒:**</p>
+                    <p>若您選擇在 <span class="itinerary-poi-list">The Noborisaka village</span> 園區內用餐 (例如 BBG 套餐或當地特色餐)，通常**需要提前預約**，費用約在 4,000 - 8,000 JPY/人，建議 Check-in 時再次確認或事先聯繫飯店。</p>
+                 </div>
+                 <p class="text-sm text-gray-700 itinerary-poi-list mt-3">
+                     若決定前往富士山站周邊，以下是推薦的選擇 (從飯店搭乘計程車或公車至富士山站):
+                     <ul class="list-disc list-inside ml-4 mt-2 space-y-2">
+                        <li><strong>燒肉/居酒屋:</strong> <span class="itinerary-poi-list">居酒屋 學牛</span> (提供優質日式燒肉，是富士吉田地區評價較高的選擇，平均費用約 4,000 - 6,000 JPY/人)。</li>
+                        <li><strong>連鎖居酒屋:</strong> <span class="itinerary-poi-list">魚民 富士山駅前店</span> (標準日式居酒屋連鎖，選擇多樣，價格實惠，平均費用約 2,500 - 4,000 JPY/人)。</li>
+                        <li><strong>富士山名物:</strong> <span class="itinerary-poi-list">不動餺飥麵</span> (河口湖名物，大份量蔬菜麵)、<span class="itinerary-poi-list">吉田のうどん</span> (在地特色硬麵)。</li>
+                    </ul>
+                 </p>
+             </div>
+        </div>
+
+        <!-- DAY 3: 12/15 (一) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4">
+                <h3 class="text-xl font-bold">DAY 3: 12/15 (一) 🚌 河口湖周遊巴士深度遊 (時間規劃細節)</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ 行程概要 (<span class="text-green-700 font-bold">使用 河口湖·西湖 1DayPass - 1,500 JPY</span>):</p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-600 itinerary-poi-list space-y-1">
+                        <li><strong>早上交通:</strong> 從 <span class="itinerary-poi-list">The Noborisaka village</span> $\rightarrow$ <strong>河口湖站</strong> (需規劃 9:00 AM 抵達，可搭乘富士急行線或計程車)。</li>
+                        <li><strong>上午 (綠線):</strong> 9:50 AM 抵達 <span class="itinerary-poi-list">西湖療癒之里根場</span> (停留至 1:00 PM，含午餐)。</li>
+                        <li><strong>下午 (紅線):</strong> 依序前往：<span class="itinerary-poi-list">大石公園</span> (1小時) $\rightarrow$ <span class="itinerary-poi-list">音樂盒之森美術館</span> (1小時) $\rightarrow$ <span class="itinerary-poi-list">河口湖香草館</span> (16:05 PM 抵達，趕在 17:00 PM 關門前)。</li>
+                        <li>晚餐推薦: <span class="itinerary-poi-list">WAKANA</span> (壽司) 或 <span class="itinerary-poi-list">ほうとう蔵歩成</span> (鄉土料理)。</li>
+                    </ul>
+                </div>
+                
+                <h4 class="text-base font-semibold text-gray-700 mt-4 mb-2 border-b border-gray-200 pb-1">🚌 深度遊交通與時間規劃 (參考時刻表)</h4>
+                <div class="overflow-x-auto">
+                    <table class="timetable-table min-w-full text-xs">
+                        <thead>
+                            <tr class="bg-indigo-100">
+                                <th class="w-1/6">時間</th>
+                                <th>路線/車次</th>
+                                <th>起點站 (備註)</th>
+                                <th>終點站 (停留時間)</th>
+                                <th>交通時間 (約)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            <tr>
+                                <td>08:40</td>
+                                <td>(富士急行線或計程車)</td>
+                                <td>The Noborisaka village (住宿處)</td>
+                                <td>河口湖站 (R1/G1)</td>
+                                <td>20 分鐘</td>
+                            </tr>
+                            <tr class="bg-green-50">
+                                <td>09:00 - 09:10</td>
+                                <td>購買 1DayPass (1,500 JPY)</td>
+                                <td>河口湖站</td>
+                                <td>河口湖站 (R1/G1)</td>
+                                <td>10 分鐘</td>
+                            </tr>
+                            <tr class="bg-green-100 font-medium">
+                                <td>09:10</td>
+                                <td>綠線巴士 (G-Line)</td>
+                                <td>河口湖站 (G1)</td>
+                                <td class="itinerary-poi-list"><span class="itinerary-poi-list">西湖療癒之里根場</span> (G15)</td>
+                                <td>40 分鐘</td>
+                            </tr>
+                            <tr>
+                                <td>09:50 - 13:00</td>
+                                <td>(遊覽/午餐)</td>
+                                <td>西湖療癒之里根場</td>
+                                <td>西湖療癒之里根場 (G15)</td>
+                                <td>**3 小時 10 分鐘**</td>
+                            </tr>
+                            <tr class="bg-blue-100 font-medium">
+                                <td>13:00</td>
+                                <td>綠線巴士 (G-Line)</td>
+                                <td>西湖療癒之里根場 (G15)</td>
+                                <td class="itinerary-poi-list"><span class="itinerary-poi-list">大石公園</span> (R20) (紅線終點)</td>
+                                <td>40 分鐘</td>
+                            </tr>
+                            <tr class="bg-blue-50">
+                                <td>13:40 - 14:40</td>
+                                <td>(遊覽)</td>
+                                <td>大石公園</td>
+                                <td>大石公園 (R20)</td>
+                                <td>**1 小時**</td>
+                            </tr>
+                            <tr>
+                                <td>14:45</td>
+                                <td>紅線巴士 (R-Line)</td>
+                                <td>大石公園 (R20)</td>
+                                <td class="itinerary-poi-list"><span class="itinerary-poi-list">音樂盒之森美術館</span> (R17)</td>
+                                <td>10 分鐘</td>
+                            </tr>
+                            <tr class="bg-blue-50">
+                                <td>14:55 - 15:55</td>
+                                <td>(遊覽)</td>
+                                <td>音樂盒之森美術館</td>
+                                <td>音樂盒之森美術館 (R17)</td>
+                                <td>**1 小時**</td>
+                            </tr>
+                            <tr>
+                                <td>16:00</td>
+                                <td>紅線巴士 (R-Line)</td>
+                                <td>音樂盒之森美術館 (R17)</td>
+                                <td class="itinerary-poi-list"><span class="itinerary-poi-list">河口湖香草館</span> (R15)</td>
+                                <td>5 分鐘</td>
+                            </tr>
+                            <tr class="bg-blue-50">
+                                <td>16:05 - 17:00</td>
+                                <td>(購物/遊覽)</td>
+                                <td>河口湖香草館 (關門時間 17:00)</td>
+                                <td>河口湖香草館 (R15)</td>
+                                <td>**55 分鐘**</td>
+                            </tr>
+                            <tr class="font-bold text-red-700">
+                                <td>17:05</td>
+                                <td>紅線巴士 (R-Line)</td>
+                                <td>河口湖香草館 (R15)</td>
+                                <td>河口湖站 (R1)</td>
+                                <td>約 15 分鐘</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-xs text-red-700 mt-1">* 時刻為參考，綠線 (G-Line) 班次較少 (約 1小時/班)，請務必在河口湖站索取最新的即時時刻表。紅線 (R-Line) 班次較密集 (約 15-20分鐘/班)。</p>
+                    <p class="text-xs text-gray-500 mt-1">* <span class="itinerary-poi-list">河口湖香草館</span> 冬季 (12月) 營業時間通常至 17:00 PM，建議提前確認。</p>
+                </div>
+
+                <h4 class="text-base font-semibold text-gray-700 mt-4 mb-2 border-b border-gray-200 pb-1">🍜 午餐推薦：西湖療癒之里根場 (12:00 PM 適用)</h4>
+                <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400 text-sm text-gray-700 itinerary-poi-list">
+                    <p class="font-medium text-yellow-800 mb-2">在根場這個茅草屋聚落中，最推薦在當地傳統的食事處享用熱食，以應對 12 月的寒冷：</p>
+                    <ul class="list-disc list-inside ml-4 space-y-2">
+                        <li><strong>首選 (當地特色):</strong> <span class="itinerary-poi-list">里根場 食事處</span> (園區內，提供餺飥麵、烏龍麵定食等，非常溫暖且富有地方特色，平均費用約 1,200 - 2,000 JPY/人)。</li>
+                        <li><strong>備選 (麵食):</strong> 園區內有供應蕎麥麵和烏龍麵的簡餐店 (例如 <span class="itinerary-poi-list">根場 蕎麥麵</span>)，適合快速用餐。</li>
+                        <li><strong>景觀咖啡:</strong> 園區內也有小型咖啡館，可提供輕食和甜點，適合不追求正餐的旅客。</li>
+                    </ul>
+                </div>
+
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍣 晚餐推薦 (住宿周邊 & 河口湖站)</h4>
+                <p class="text-sm text-gray-700 itinerary-poi-list">
+                    <strong>壽司:</strong> <span class="itinerary-poi-list">WAKANA</span> (高品質壽司，若想吃精緻料理，需提前預約)。<strong>鄉土料理:</strong> <span class="itinerary-poi-list">ほうとう蔵歩成</span> (餺飥麵，是富士山地區的招牌，份量大)。
+                </p>
+            </div>
+        </div>
+        
+        <!-- DAY 4: 12/16 (二) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4">
+                <h3 class="text-xl font-bold">DAY 4: 12/16 (二) 湧泉與湖畔巡禮 (使用富士吉田·山中湖 1DayPass)</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ 行程概要 (<span class="text-red-700 font-bold">使用 富士吉田·忍野·山中湖 1DayPass - 1,500 JPY</span>):</p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-600 itinerary-poi-list space-y-1">
+                        <li><strong>早上:</strong> 從 <span class="itinerary-poi-list">The Noborisaka village</span> $\rightarrow$ <strong>河口湖站</strong> (需規劃 9:00 AM 抵達，購買 Pass)。</li>
+                        <li><strong>山中湖 (第一站):</strong> 10:50 AM 抵達 <span class="itinerary-poi-list">山中湖</span> 畔，於 <span class="itinerary-poi-list">THE PARK 湖畔景觀咖啡廳</span> 享用早午餐，隨後搭乘遊覽船 (預計停留 **2.5 小時**)。</li>
+                        <li><strong>忍野八海 (第二站):</strong> 13:45 PM 抵達 <span class="itinerary-poi-list">忍野八海</span> (天然湧泉群)，預計停留 **2 小時**。</li>
+                        <li>晚餐推薦: <span class="itinerary-poi-list">食彩味覚 味くら</span> (山中湖周邊) 或回到河口湖站周邊用餐。</li>
+                    </ul>
+                </div>
+
+                <h4 class="text-base font-semibold text-gray-700 mt-4 mb-2">🚌 交通規劃：A-Line 巴士 (<span class="text-red-600 font-bold">使用 1DayPass</span>)</h4>
+                <p class="text-xs text-gray-500 mb-2">*此 Pass 涵蓋 A-Line 巴士 (河口湖站 - 富士山站 - 忍野八海 - 山中湖)，可無限次搭乘。</p>
+                <div class="overflow-x-auto">
+                    <table class="timetable-table min-w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th>階段</th>
+                                <th>乘車地點</th>
+                                <th>下車站點</th>
+                                <th>時間 (參考)</th>
+                                <th>乘車時間 (約)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            <tr class="bg-yellow-100 font-medium">
+                                <td>去程 1 (湖畔)</td>
+                                <td>河口湖站</td>
+                                <td>山中湖 (花の都公園入口)</td>
+                                <td>10:00 - 10:50</td>
+                                <td>50 分鐘</td>
+                            </tr>
+                            <tr>
+                                <td>**遊覽**</td>
+                                <td colspan="2">山中湖 (早午餐 + 搭船)</td>
+                                <td>10:50 - 13:20</td>
+                                <td>**2 小時 30 分**</td>
+                            </tr>
+                            <tr class="bg-yellow-100 font-medium">
+                                <td>轉乘 2 (湧泉)</td>
+                                <td>山中湖 (花の都公園入口)</td>
+                                <td>忍野八海</td>
+                                <td>13:30 - 13:45</td>
+                                <td>15 分鐘</td>
+                            </tr>
+                            <tr>
+                                <td>**遊覽**</td>
+                                <td colspan="2">忍野八海 (天然湧泉群)</td>
+                                <td>13:45 - 15:45</td>
+                                <td>**2 小時**</td>
+                            </tr>
+                            <tr class="bg-yellow-100 font-medium">
+                                <td>回程</td>
+                                <td>忍野八海</td>
+                                <td>河口湖站</td>
+                                <td>15:50 - 16:20</td>
+                                <td>30 分鐘</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DAY 5: 12/17 (三) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4"><h3 class="text-xl font-bold">DAY 5: 12/17 (三) 🔄 都會轉場 - 六本木夜景</h3></div>
+            <div class="p-6 space-y-4">
+                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ 行程概要:</p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-700 itinerary-poi-list space-y-1">
+                        <li>11:00 退房，前往河口湖站。</li>
+                        <li>13:00 搭乘高速巴士前往東京<strong>新宿 Busta</strong> (需提前預約)。</li>
+                        <li>15:00 抵達新宿，入住 <span class="itinerary-poi-list">東橫INN</span>。</li>
+                        <li>17:00 前往 <span class="itinerary-poi-list">六本木</span>，欣賞東京鐵塔夜景 (六本木之丘/東京中城)。</li>
+                        <li>20:30 六本木晚餐。</li>
+                    </ul>
+                </div>
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🚌 交通規劃：河口湖 $\rightarrow$ 新宿</h4>
+                 <div class="overflow-x-auto"><table class="timetable-table min-w-full text-xs"><thead><tr><th>路線</th><th>乘車地點</th><th>下車站點</th><th>乘車時間</th><th>票價</th></tr></thead><tbody><tr><td>高速巴士</td><td>河口湖站</td><td>新宿 Busta</td><td>約 1小時 45分</td><td>2,200 JPY (需預約)</td></tr></tbody></table></div>
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍽️ 晚餐推薦 (六本木)</h4>
+                <p class="text-sm text-gray-700 itinerary-poi-list">
+                    <span class="itinerary-poi-list">TsuruTonTan 烏龍麵</span> (適合輕食，選擇多樣) 或 <span class="itinerary-poi-list">權八 西麻布</span> (日式居酒屋，氣氛佳，電影《追殺比爾》場景靈感來源)。
+                </p>
+            </div>
+        </div>
+
+        <!-- DAY 6: 12/18 (四) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4"><h3 class="text-xl font-bold">DAY 6: 12/18 (四) 🇯🇵 文化與橫濱港灣一日遊</h3></div>
+            <div class="p-6 space-y-4">
+                <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ 行程概要:</p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-700 itinerary-poi-list space-y-1">
+                        <li>早上: <span class="itinerary-poi-list">明治神宮</span> (感受東京中心的寧靜)。</li>
+                        <li>中午: 前往橫濱 (約 30-40 分鐘車程)。</li>
+                        <li>下午: <span class="itinerary-poi-list">橫濱中華街</span> (午餐)、<strong>Minatomirai 港未來區</strong>。</li>
+                        <li>傍晚: <span class="itinerary-poi-list">橫濱紅磚倉庫</span> (逛街、休憩)、<span class="itinerary-poi-list">橫濱拉麵博物館</span>。</li>
+                    </ul>
+                </div>
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍽️ 橫濱美食與景點</h4>
+                <p class="text-sm text-gray-700 itinerary-poi-list">
+                    <strong>咖啡廳:</strong> <span class="itinerary-poi-list">Chano-ma Yokohama</span> (躺臥式座位，極度放鬆)。<strong>晚餐/啤酒:</strong> <span class="itinerary-poi-list">赤レンガ倉庫 Beer Next</span> (紅磚倉庫內精釀啤酒)。
+                </p>
+            </div>
+        </div>
+
+        <!-- DAY 7: 12/19 (五) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4"><h3 class="text-xl font-bold">DAY 7: 12/19 (五) 🛍️ 澀谷與原宿 - 潮流與告別晚餐</h3></div>
+            <div class="p-6 space-y-4">
+                <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ 行程概要:</p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-700 itinerary-poi-list space-y-1">
+                        <li>上午: <span class="itinerary-poi-list">原宿竹下通/表參道</span> (年輕潮流與時尚大道)。</li>
+                        <li>下午: <span class="itinerary-poi-list">澀谷</span> (十字路口、<span class="itinerary-poi-list">Shibuya Loft</span> 等購物)。</li>
+                        <li>晚上: 豪華告別晚餐。</li>
+                    </ul>
+                </div>
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🎁 購物與甜點推薦</h4>
+                <p class="text-sm text-gray-700 itinerary-poi-list">
+                    <strong>表參道:</strong> <span class="itinerary-poi-list">Number Sugar</span> (手工焦糖)、<span class="itinerary-poi-list">Luke's Lobster</span> (龍蝦堡)。
+                </p>
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🍣 告別晚餐推薦 (新宿周邊)</h4>
+                <p class="text-sm text-gray-700 itinerary-poi-list">
+                    <strong>大眾:</strong> <span class="itinerary-poi-list">迴轉壽司 活 美登利</span> (高 CP 值)。<strong>高檔/體驗:</strong> <span class="itinerary-poi-list">新宿割烹 中嶋</span> (米其林一星，午間套餐划算)、<span class="itinerary-poi-list">ザウオ</span> (釣魚主題餐廳，趣味十足)。
+                </p>
+            </div>
+        </div>
+
+        <!-- DAY 8: 12/20 (六) -->
+        <div class="mb-8 bg-white rounded-xl overflow-hidden card">
+            <div class="day-header text-white p-4"><h3 class="text-xl font-bold">DAY 8: 12/20 (六) 🛫 歸途 (14:00 班機)</h3></div>
+            <div class="p-6 space-y-4">
+                <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400">
+                    <p class="font-medium text-gray-800 mb-2">✅ 行程概要:</p>
+                    <ul class="list-disc list-inside ml-2 text-sm text-gray-700 space-y-1">
+                        <li>09:30 飯店享用早餐並 Check-out。</li>
+                        <li>10:30 前往 JR 新宿站，搭乘 N'EX (需劃位)。</li>
+                        <li>12:00 抵達 NRT 機場，辦理登機。</li>
+                        <li>14:00 班機起飛。</li>
+                    </ul>
+                </div>
+                <h4 class="text-base font-semibold text-gray-800 mt-4 mb-2">🚝 交通規劃：新宿 $\rightarrow$ 成田機場 (NRT)</h4>
+                <div class="overflow-x-auto">
+                    <table class="timetable-table min-w-full text-xs">
+                         <thead><tr><th>乘車地點</th><th>下車站點</th><th>乘車時間</th><th>單程票價</th><th>備註</th></tr></thead>
+                         <tbody><tr><td>JR 新宿</td><td>NRT</td><td>約 83 分鐘</td><td>含在 4,070 來回票</td><td>N'EX 務必劃位，預留充裕時間</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- 總結與備註 -->
+    <footer class="mt-10 p-6 bg-indigo-900 rounded-xl text-white">
+        <h3 class="text-xl font-bold border-b pb-2 mb-3 border-indigo-400">🔑 總結提醒與實用資訊</h3>
+        <ul class="list-disc list-inside space-y-2 text-sm text-indigo-200">
+            <li><strong>票券最終確認:</strong> 已明確規劃為購買 <strong>兩張不同的 1 日券</strong> (河口湖/西湖 & 富士吉田/山中湖)，總成本為 3,000 JPY。</li>
+            <li><strong>高速巴士:</strong> 請務必提前上網預約並付款。</li>
+            <li><strong>N'EX:</strong> 去回程都必須到 JR 綠色窗口<strong>劃位</strong>，請確保有座位。</li>
+            <li><strong>Skyliner:</strong> 轉乘時請務必注意 JR 山手線的內/外環方向 (應搭乘**外環線**往池袋/新宿方向)。</li>
+            <li><strong>時刻表確認:</strong> 表格中的時刻僅供參考，請務必在出發前一天再次確認官方網站的<strong>最新時刻表</strong>。</li>
+        </ul>
+        <p class="text-center text-xs mt-6 text-indigo-400">此文件為互動式旅行手冊，祝您旅途愉快！</p>
+    </footer>
+
+</body>
+</html>
